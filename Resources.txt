@@ -1,0 +1,8 @@
+Papers:
+https://github.com/thunlp/GNNPapers?fbclid=IwAR2fW7_7gJb4CTqsHM_54e_VCSSDooCXjSdcADodqNM8p4KKzpwbBubJ8Kg
+
+Presentations:
+https://www-cs-faculty.stanford.edu/people/jure/pubs/graphsage-nips17.pdf?fbclid=IwAR2kMHr_4W4LY3TYm2zXq2rPkF14XbKuVzxXKxqVAIczHuSn0ZMwItQdKRw
+
+Blog:
+https://l.facebook.com/l.php?u=https%3A%2F%2Ftowardsdatascience.com%2Fa-gentle-introduction-to-graph-neural-network-basics-deepwalk-and-graphsage-db5d540d50b3%3Ffbclid%3DIwAR1qFBMt2kT1jCFS8qzMxwGS9rfQxkyEsuMR-F7x_BPnQTVa-NWy5pYhQNc&h=AT1yPXOmWLsbEtsEQUiMIpc7VKjnVAK9vj6kbFg6fvDCXj6SeyWcdE5ehRAbI5IcKpnkxJA2Dn2_fbQOiaOhw7QtUSdSZvRT4iWslW4BjrKP9ZG7Rg76gcyzIt_RMDDGrDlCNg
