@@ -23,7 +23,6 @@ import networkx as nx
 import numpy as np
 
 
-
 class gnn(torch.nn.Module):
     #------- Define the neural architecture
     def __init__(self,num_features,num_classes,hidden_size):
@@ -42,7 +41,7 @@ class gnn(torch.nn.Module):
         return F.log_softmax(x, dim=1)
     
 
-os.chdir("/home/george/Desktop/mlgraphs/Data")
+os.chdir("/home/george/Desktop/Extreme-GNNs/Data")
            
  
 #------- Parameters
