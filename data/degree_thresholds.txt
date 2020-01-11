@@ -1,0 +1,7 @@
+{'deg_BlogCatalog.txt': 9.4103225806451576,
+'deg_CA-AstroPh.txt': 9.2915384615384653,
+'deg_CA-HepPh.txt': 9.415806451612907,
+'deg_Flickr.txt': 9.5,
+'deg_Wiki-Vote.txt': 9.1800586510264015,
+'cora-net': 6.8399999999999981,
+'deg_mag.txt': 9.8093505039193811}
