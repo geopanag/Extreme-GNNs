@@ -109,7 +109,7 @@ if __name__ == '__main__':
     
     
     #------ Sample randomly 20% for train set
-    train_samples = np.random.choice( [i for i in range(len(names))] ,  round(20*len(names)/100),replace=False) 
+    train_samples = np.random.choice( [i for i in range(len(names))] ,  round(10*len(names)/100),replace=False) 
     
     test_samples = [i for i in range(len(names)) if i not in train_samples] 
     
@@ -127,7 +127,6 @@ if __name__ == '__main__':
         target.append(i.tuple[1])
         
     edge_index = torch.tensor([source,target])
-    
     
     #------- Input to the extreme method
     train_mask_e = torch.tensor(train_extremes)
@@ -199,7 +198,4 @@ if __name__ == '__main__':
 
     print("baseline extreme")
     train(dat, model, lr, n_epochs)
-    
-    
-    #------------------------------ TODO: Demo-net
     
