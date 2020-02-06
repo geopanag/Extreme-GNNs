@@ -31,7 +31,11 @@ import numpy as np
 
 import torch_geometric.transforms as T
 
-os.chdir("/home/george/Desktop/extreme-gnns/code")
+George = False #if True, George is running the code, otherwise, Hamid is working on the code
+if George:
+    os.chdir("/home/george/Desktop/Extreme-GNNs/code") 
+else:
+    os.chdir("/home/h/Documents/Japet/Extreme-GNNs/code")
 
            
 class gcn(torch.nn.Module):
@@ -96,7 +100,10 @@ def test(dat):
     
 
     
-os.chdir("/home/george/Desktop/extreme-gnns/data")
+if George:
+    os.chdir("/home/george/Desktop/Extreme-GNNs/data") 
+else:
+    os.chdir("/home/h/Documents/Japet/Extreme-GNNs/data")
            
 if __name__ == '__main__': 
     #------- Dataset & Parameters
@@ -119,7 +126,10 @@ if __name__ == '__main__':
     dic = {i:j for i,j in zip(names,degs)}
 
     dataset = 'Cora'
-    path = osp.join(osp.dirname(osp.realpath("/home/george/Desktop/extreme-gnns")), '..', 'data', dataset)
+    if George:
+        path = osp.join(osp.dirname(osp.realpath("/home/george/Desktop/extreme-gnns")), '..', 'data', dataset)
+    else:
+        path = osp.join(osp.dirname(osp.realpath("/home/h/Documents/Japet/Extreme-GNNs/")), '..', 'data', dataset)
     dataset = Planetoid(path, dataset, T.NormalizeFeatures())
     data = dataset[0]
     
