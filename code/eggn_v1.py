@@ -27,9 +27,14 @@ import networkx as nx
 import numpy as np
 
 
-os.chdir("/home/george/Desktop/Extreme-GNNs/code")
+
+George = False #if True, George is running the code, otherwise, Hamid is working on the code
+if George:
+    os.chdir("/home/george/Desktop/Extreme-GNNs/code") 
+else:
+    os.chdir("/home/h/Documents/Japet/Extreme-GNNs/code")
            
-from gnns import gcn,sage
+from gnns import gcn, sagegnn #sage
 
     
 
@@ -71,8 +76,10 @@ def train(dat, model, lr, n_epochs):
         print('Accuracy: {:.4f}'.format(acc))
     
     
-    
-os.chdir("/home/george/Desktop/Extreme-GNNs/data")
+if George:    
+    os.chdir("/home/george/Desktop/Extreme-GNNs/data")
+else:
+    os.chdir("/home/h/Documents/Japet/Extreme-GNNs/data")
            
 if __name__ == '__main__': 
     #------- Dataset & Parameters
