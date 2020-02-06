@@ -22,7 +22,7 @@ from torch_geometric.nn import GCNConv
 from torch.nn import Sequential as Seq, Linear, ReLU
 from torch_geometric.nn import MessagePassing
 from torch_geometric.utils import remove_self_loops, add_self_loops
-
+import matplotlib.pyplot as plt   
 
 import igraph as ig
 import scipy.io
@@ -39,10 +39,10 @@ class gcn(torch.nn.Module):
     https://arxiv.org/abs/1609.02907    
     """
     #------- Regular
-    def __init__(self):
+    def __init__(self,num_features,num_classes,hidden_size):
         super(gcn, self).__init__()
-        self.conv1 = GCNConv(dat.num_features, dat.hidden_size)
-        self.conv2 = GCNConv(dat.hidden_size, dat.num_classes) #+1
+        self.conv1 = GCNConv(num_features, hidden_size)
+        self.conv2 = GCNConv(hidden_size, num_classes) #+1
 
         self.reg_params = self.conv1.parameters()
         self.non_reg_params = self.conv2.parameters()
@@ -142,7 +142,16 @@ if __name__ == '__main__':
     
     train_extremes, train_regulars =  get_indices(train_samples,dic,thres)
     test_extremes, test_regulars =  get_indices(test_samples,dic,thres)
-        
+       
+    #train_idx = list(data.train_mask.numpy())
+    #test_idx = list(data.test_mask.numpy())
+    #val_idx = list(data.val_mask.numpy())
+    #y = list(data.y.numpy())
+    #labs = [y[i] for i in np.where(train_idx)[0]]
+    #vals = [y[i] for i in np.where(val_idx)[0]]
+    #vals = [y[i] for i in np.where(test_idx)[0]]
+    #plt.hist(vals)
+    
     #------- Create the input to the algorithm
     #source = []
     #target = []
