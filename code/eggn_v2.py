@@ -8,8 +8,6 @@ Created on Tue Nov  5 18:56:35 2019
 
 import os
 import pandas as pd
-
-
 import os.path as osp
 import argparse
 
@@ -31,13 +29,19 @@ import numpy as np
 
 import torch_geometric.transforms as T
 
-George = False #if True, George is running the code, otherwise, Hamid is working on the code
+from collections import Counter
+import operator
+
+
+George = True #if True, George is running the code, otherwise, Hamid is working on the code
 if George:
     os.chdir("/home/george/Desktop/Extreme-GNNs/code") 
 else:
     os.chdir("/home/h/Documents/Japet/Extreme-GNNs/code")
 
-           
+ 
+
+          
 class gcn(torch.nn.Module):
     """
     https://arxiv.org/abs/1609.02907    
@@ -97,9 +101,14 @@ def test(dat):
         acc = pred.eq(dat.y[mask]).sum().item() / mask.sum().item()
         accs.append(acc)
     return accs
-    
 
     
+def get_label(train_extremes,y):
+    d = dict(Counter([y[i] for i in np.where(train_extremes)[0]]))
+    return  max(d.items(), key=operator.itemgetter(1))[0]
+
+    
+
 if George:
     os.chdir("/home/george/Desktop/Extreme-GNNs/data") 
 else:
@@ -111,7 +120,6 @@ if __name__ == '__main__':
     lr = 0.01
     n_epochs = 300
     
-
     thresholds = eval(open('degree_thresholds.txt' , 'r').read())
             
     #------- Read the data
@@ -133,6 +141,8 @@ if __name__ == '__main__':
     dataset = Planetoid(path, dataset, T.NormalizeFeatures())
     data = dataset[0]
     
+    #plt.hist([data.y.numpy()[i] for i in np.where(data.val_mask.numpy())[0]])
+    
     labs =  data.y.numpy()
     #labs = labs.set_index("node")
     num_classes = len(np.unique(labs))
@@ -149,10 +159,15 @@ if __name__ == '__main__':
     test_samples = [names[i] for i in np.where(data.test_mask.numpy())[0]]
     del data.val_mask
     
-    
     train_extremes, train_regulars =  get_indices(train_samples,dic,thres)
     test_extremes, test_regulars =  get_indices(test_samples,dic,thres)
-       
+
+    y = data.y.numpy()
+    extreme_train_label = get_label(train_extremes,y)
+        
+    
+    data.y = torch.tensor(np.array([i==1 for i in list(y)]).astype(int))
+    
     #train_idx = list(data.train_mask.numpy())
     #test_idx = list(data.test_mask.numpy())
     #val_idx = list(data.val_mask.numpy())
@@ -161,7 +176,6 @@ if __name__ == '__main__':
     #vals = [y[i] for i in np.where(val_idx)[0]]
     #vals = [y[i] for i in np.where(test_idx)[0]]
     #plt.hist(vals)
-    
     #------- Create the input to the algorithm
     #source = []
     #target = []
@@ -169,7 +183,6 @@ if __name__ == '__main__':
     #    source.append(i.tuple[0])
     #    target.append(i.tuple[1])
     #edge_index = torch.tensor([source,target])
-    
     
     #------- Input to the extreme head
     train_mask_e = torch.tensor(train_extremes)
