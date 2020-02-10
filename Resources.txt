@@ -1,6 +1,9 @@
 Papers:
 https://github.com/thunlp/GNNPapers?fbclid=IwAR2fW7_7gJb4CTqsHM_54e_VCSSDooCXjSdcADodqNM8p4KKzpwbBubJ8Kg
 
+Attention:
+http://akosiorek.github.io/ml/2017/10/14/visual-attention.html
+
 Presentations:
 https://www-cs-faculty.stanford.edu/people/jure/pubs/graphsage-nips17.pdf?fbclid=IwAR2kMHr_4W4LY3TYm2zXq2rPkF14XbKuVzxXKxqVAIczHuSn0ZMwItQdKRw
 
