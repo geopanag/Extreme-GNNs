@@ -3,6 +3,7 @@ https://github.com/thunlp/GNNPapers?fbclid=IwAR2fW7_7gJb4CTqsHM_54e_VCSSDooCXjSd
 
 Attention:
 http://akosiorek.github.io/ml/2017/10/14/visual-attention.html
+https://medium.com/towards-artificial-intelligence/attention-is-all-you-need-transformer-4c34aa78308f
 
 Presentations:
 https://www-cs-faculty.stanford.edu/people/jure/pubs/graphsage-nips17.pdf?fbclid=IwAR2kMHr_4W4LY3TYm2zXq2rPkF14XbKuVzxXKxqVAIczHuSn0ZMwItQdKRw
