@@ -22,6 +22,7 @@ from torch_geometric.nn import MessagePassing
 from torch_geometric.utils import remove_self_loops, add_self_loops
 import matplotlib.pyplot as plt   
 
+
 import igraph as ig
 import scipy.io
 import networkx as nx
@@ -31,6 +32,8 @@ import torch_geometric.transforms as T
 
 from collections import Counter
 import operator
+
+
 
 
 George = True #if True, George is running the code, otherwise, Hamid is working on the code
@@ -152,8 +155,8 @@ if __name__ == '__main__':
     #x = np.load("cora_features.npy")
     #num_features = x.shape[1]
     thres = thresholds["cora-net"]
-    extremes = [True  if i>thres else False for i in degs] 
-    regs = [True  if i<=thres else False for i in degs] 
+    #extremes = [True  if i>thres else False for i in degs] 
+    #regs = [True  if i<=thres else False for i in degs] 
     
     #-----------------------------------------------
 
