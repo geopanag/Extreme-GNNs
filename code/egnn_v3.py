@@ -121,9 +121,9 @@ def train(dat):
 def test(dat):
     model.eval()
     logits, accs = model(dat), []
-    for _, mask in data('train_mask', 'val_mask', 'test_mask'):
+    for _, mask in dat('train_mask', 'val_mask', 'test_mask'):
         pred = logits[mask].max(1)[1]
-        acc = pred.eq(data.y[mask]).sum().item() / mask.sum().item()
+        acc = pred.eq(dat.y[mask]).sum().item() / mask.sum().item()
         accs.append(acc)
     return accs  
 
@@ -234,7 +234,6 @@ if __name__ == '__main__':
             #sum(test_extremes)
             y = data.y.numpy()
             extreme_train_label = get_label(train_extremes,y)
-            print(extreme_train_label)
             
             data.y = torch.tensor(np.array([i==1 for i in list(y)]).astype(int))
             
@@ -254,12 +253,14 @@ if __name__ == '__main__':
         
             num_features = data.x.shape[1]
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-            
+            print(device)
+
+
             #------------------------------ Regular
             dat_regular = Data(edge_index = data.edge_index, test_mask = test_mask_r, 
-                        train_mask = train_mask_r, x = data.x , y = data.y, val_mask = val_mask_r)    
+                        train_mask = train_mask_r, x = data.x , y = data.y, val_mask = val_mask_r).to(device)    
             
-            model, dat_regular = gcn(num_features,num_classes,hidden_size).to(device), dat_regular.to(device)
+            model = gcn(num_features,num_classes,hidden_size).to(device)
             optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=5e-4)
             
             print("regular")    
@@ -281,7 +282,7 @@ if __name__ == '__main__':
                 
             #------------------------------ Extreme
             dat_extreme = Data(edge_index = data.edge_index, test_mask = test_mask_e, 
-                        train_mask = train_mask_e, x = data.x , y = data.y).to(device)   
+                        train_mask = train_mask_e, x = data.x , y = data.y, val_mask = val_mask_e).to(device)   
             
             model = gcn(num_features,num_classes,hidden_size).to(device)
             optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=5e-4)
@@ -303,10 +304,9 @@ if __name__ == '__main__':
                     print(log.format(epoch, train_acc, best_val_acc, test_acc))   
                 
             
-            
             #---------------------- Base Regular
             dat_baseline_reg = Data(edge_index = data.edge_index, test_mask = test_mask_r, 
-                        train_mask = data.train_mask, x = data.x , y = data.y).to(device)   
+                        train_mask = data.train_mask, x = data.x , y = data.y, val_mask = val_mask_r).to(device)   
             
             model = gcn(num_features,num_classes,hidden_size).to(device)
             optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=5e-4)
@@ -329,7 +329,7 @@ if __name__ == '__main__':
         
             #---------------------- Base Extreme
             dat_baseline_ex = Data(edge_index = data.edge_index, test_mask = test_mask_e, 
-                        train_mask = data.train_mask, x = data.x , y = data.y).to(device)   
+                        train_mask = data.train_mask, x = data.x , y = data.y, val_mask = val_mask_e).to(device)   
                 
             model = gcn(num_features,num_classes,hidden_size).to(device)
             optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=5e-4)
