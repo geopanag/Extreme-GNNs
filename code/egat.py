@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
-Created on Tue Nov  5 18:56:35 2019
+reated on Tue Nov  5 18:56:35 2019
 
 @author: george
 """
@@ -18,7 +16,7 @@ from torch_geometric.datasets import Planetoid
 import torch
 from torch_geometric.data import Data
 import torch.nn.functional as F
-from torch_geometric.nn import GCNConv
+from torch_geometric.nn import GATConv
 from torch.nn import Sequential as Seq, Linear, ReLU
 from torch_geometric.nn import MessagePassing
 from torch_geometric.utils import remove_self_loops, add_self_loops
@@ -39,13 +37,7 @@ import operator
 
 
 George = True #if True, George is running the code, otherwise, Hamid is working on the code
-if George:
-    os.chdir("/home/george/Desktop/extreme-gnns/code") 
-else:
-    os.chdir("/home/h/Documents/Japet/Extreme-GNNs/code")
 
- 
-    /data/home/gpanagopoulos/egnn
 def order(X):
     """Return the order statistic of each sample in X, features by features
     """
@@ -87,29 +79,20 @@ def find_thres_naive(deg_val,percentile):
     
 
           
-class gcn(torch.nn.Module):
-    """
-    https://arxiv.org/abs/1609.02907    
-    """
-    #------- Regular
+class Net(torch.nn.Module):
     def __init__(self,num_features,num_classes,hidden_size):
-        super(gcn, self).__init__()
-        self.conv1 = GCNConv(num_features, hidden_size)
-        self.conv2 = GCNConv(hidden_size, num_classes) #+1
+        super(Net, self).__init__()
+        self.conv1 = GATConv(num_features, 8, heads=8, dropout=0.6)
+        # On the Pubmed dataset, use heads=8 in conv2.
+        self.conv2 = GATConv(
+            8 * 8, num_classes, heads=1, concat=True, dropout=0.6)
 
-        self.reg_params = self.conv1.parameters()
-        self.non_reg_params = self.conv2.parameters()
-        
-    def forward(self, dat):
-        x, edge_index = dat.x, dat.edge_index
-
-        x = self.conv1(x, edge_index)
-        x = F.relu(x)
-        x = F.dropout(x, training=self.training)
-        x = self.conv2(x, edge_index)
-
+    def forward(self,dat):
+        x = F.dropout(dat.x, p=0.6, training=self.training)
+        x = F.elu(self.conv1(x, dat.edge_index))
+        x = F.dropout(x, p=0.6, training=self.training)
+        x = self.conv2(x, dat.edge_index)
         return F.log_softmax(x, dim=1)
-
 
 
 def train(dat):   
@@ -159,7 +142,8 @@ def separate_indices(samples,dic,thres):
 
 
 if George:
-    os.chdir("/home/george/Desktop/extreme-gnns/data") 
+    #os.chdir("/home/george/Desktop/extreme-gnns/data") 
+    os.chdir("/home/dascim/panago/data")
 else:
     os.chdir("/home/h/Documents/Japet/Extreme-GNNs/data")
            
@@ -170,7 +154,7 @@ if __name__ == '__main__':
     n_epochs = 200
     experiments = 10
     step_perc = 2
-    repetitions = 20
+    repetitions = 10
     
     
     for ri in range(repetitions):
@@ -179,7 +163,8 @@ if __name__ == '__main__':
         
         for ds in  ['CiteSeer','Cora','PubMed']:
             if George:
-                path = osp.join(osp.dirname(osp.realpath("/home/george/Desktop/extreme-gnns")), '..', 'data', ds)
+                path = osp.join(osp.dirname(
+                        osp.realpath("/home/dascim/panago/")), 'data', ds)
             else:
                 path = osp.join(osp.dirname(osp.realpath("/home/h/Documents/Japet/Extreme-GNNs/")), '..', 'data', ds)
                 
@@ -259,7 +244,7 @@ if __name__ == '__main__':
                 dat_regular = Data(edge_index = data.edge_index, test_mask = test_mask_r, 
                             train_mask = train_mask_r, x = data.x , y = data.y, val_mask = val_mask_r).to(device)    
                 
-                model = gcn(num_features,num_classes,hidden_size).to(device)
+                model = Net(num_features,num_classes,hidden_size).to(device)
                 optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=5e-4)
                 
                 print("regular")    
@@ -283,7 +268,7 @@ if __name__ == '__main__':
                 dat_extreme = Data(edge_index = data.edge_index, test_mask = test_mask_e, 
                             train_mask = train_mask_e, x = data.x , y = data.y, val_mask = val_mask_e).to(device)   
                 
-                model = gcn(num_features,num_classes,hidden_size).to(device)
+                model = Net(num_features,num_classes,hidden_size).to(device)
                 optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=5e-4)
                 
                 
@@ -308,7 +293,7 @@ if __name__ == '__main__':
                 dat_baseline_reg = Data(edge_index = data.edge_index, test_mask = test_mask_r, 
                             train_mask = data.train_mask, x = data.x , y = data.y, val_mask = val_mask_r).to(device)   
                 
-                model = gcn(num_features,num_classes,hidden_size).to(device)
+                model = Net(num_features,num_classes,hidden_size).to(device)
                 optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=5e-4)
                 
                 
@@ -331,7 +316,7 @@ if __name__ == '__main__':
                 dat_baseline_ex = Data(edge_index = data.edge_index, test_mask = test_mask_e, 
                             train_mask = data.train_mask, x = data.x , y = data.y, val_mask = val_mask_e).to(device)   
                     
-                model = gcn(num_features,num_classes,hidden_size).to(device)
+                model = Net(num_features,num_classes,hidden_size).to(device)
                 optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=5e-4)
                
                 print("baseline extreme")
@@ -352,3 +337,4 @@ if __name__ == '__main__':
                 logw.write(str(percentile)+","+str(best_test_r)+"," +str(best_test_br)+","+str(best_test_e)+","+str(best_test_be)+"\n")
                 
         logw.close()
+
