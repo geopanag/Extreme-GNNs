@@ -27,28 +27,27 @@ import numpy as np
 
 
 os.chdir("/home/dascim/panago/results") 
-
+mod = "sage"
 repetitions =10
 for ds in  ['CiteSeer','Cora','PubMed']:
-    df = pd.read_csv("logw_0_"+ds+".csv")
+    df = pd.read_csv("logw_"+mod+"_0_"+ds+".csv")
     for i in range(1,repetitions):
-        df_t = pd.read_csv("logw_"+str(i) +"_"+ds+".csv")
+        df_t = pd.read_csv("logw_"+mod+"_"+str(i) +"_"+ds+".csv")
         df = df + df_t
     df = df/10
     df["perc"]= df["perc"]+2
     
     reg = df["test_r"]-df["test_br"]
     ex = df["test_e"]-df["test_be"]
+    df["diff_r"] = reg
+    df["diff_e"] = ex
+    df.to_csv("res_"+mod+"_"+ds+".csv",index=False)
+
     s = ex+reg
     m = np.max(s)
     pos = s.values.argmax()
     perc = df.loc[pos,"perc"]
     print(ds+" improvement of :"+str(m)+" at percentile "+str(perc))
-    
-    #l = list(set(np.where(reg>0)[0]).intersection(set(np.where(ex>0)[0])))
-    #reg= list(reg)
-    #ex = list(ex)
-    #for i in l:
     
     
     
