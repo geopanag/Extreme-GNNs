@@ -164,7 +164,7 @@ if __name__ == '__main__':
     experiments = 5
     step_perc = 4
     repetitions = 10
-    class_sample = 50
+    class_sample = 20
 
     for degree_based in [True]: #False
         for ri in range(repetitions):
