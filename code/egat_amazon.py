@@ -166,7 +166,7 @@ if __name__ == '__main__':
     repetitions = 10
     class_sample = 50
 
-    for degree_based in [True,False]: 
+    for degree_based in [True]: #False
         for ri in range(repetitions):
             #https://pytorch-geometric.readthedocs.io/en/latest/modules/datasets.html
             np.random.seed(42+ri)
