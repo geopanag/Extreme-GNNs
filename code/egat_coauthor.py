@@ -114,10 +114,7 @@ def test(dat):
         #acc = pred.eq(dat.y[mask]).sum().item() / mask.sum().item()
         pred = pred.detach().cpu().numpy()
         labels = dat.y[mask].detach().cpu().numpy()
-        try:
-            accs.append(roc_auc_score(labels,pred))
-        except:
-             accs.append(0)
+        accs.append(roc_auc_score(labels,pred))
     return accs
 
 
