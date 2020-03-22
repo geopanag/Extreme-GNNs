@@ -39,4 +39,4 @@ for ext in ["test","val"]:
             df["diff_r"] = reg
             df["diff_e"] = ex
             #df["sum_diff"] = ex+reg
-            df.to_csv("../results_amazon/res_"+mod+"_"+ds+".csv",index=False)
+            df.to_csv("../results_amazon/res_"+ ext+"_"+mod+"_"+ds+".csv",index=False)
