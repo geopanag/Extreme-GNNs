@@ -15,7 +15,7 @@ import numpy as np
 os.chdir("/home/george/Desktop/extreme-gnns/results_new") 
 
 
-for mod in ["gat","gcn"]:
+for mod in ["gat","gcn","sage"]:
     for ds in  ['CiteSeer','Cora','PubMed']:
         df = pd.read_csv("logw_"+mod+"_"+ds+".csv")
         df["perc"]= df["perc"]+4
