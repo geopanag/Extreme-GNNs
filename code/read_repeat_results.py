@@ -23,12 +23,14 @@ for ext in ["test","val"]:
             df = pd.read_csv("logw_"+ ext+"_"+mod+"_0_"+ds+".csv")
             for i in range(1,repetitions):
                 try:
-                    df_t = pd.read_csv("logw_"+mod+"_"+str(i) +"_"+ds+".csv")
+                    #df_t = pd.read_csv("logw_"+mod+"_"+str(i) +"_"+ds+".csv")
+                    df_t = pd.read_csv("logw_"+ ext+"_"+mod+"_"+str(i)+"_"+ds+".csv")
                     df = df + df_t
                 except:
                     continue
             df = df/(i+1)
-            df["perc"]= df["perc"]+4
+            df["perc"]= df["perc"]+2
+            df["perc"] =df["perc"].map(int)
             
             try:
                 reg = df["test_r"]-df["test_br"]
