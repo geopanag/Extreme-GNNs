@@ -11,9 +11,12 @@ import pandas as pd
 import argparse
 import numpy as np
 
+George = False
 
-os.chdir("/home/george/Desktop/extreme-gnns/results")
-
+if George:
+	os.chdir("/home/george/Desktop/extreme-gnns/results")
+else:
+	os.chdir("/home/h/Documents/Japet/Extreme-GNNs/results")
 
 perc = {}
 for mod in ["gcn","gat","sage"]:#,"gat_deg","gat_core"]:
@@ -23,6 +26,7 @@ for mod in ["gcn","gat","sage"]:#,"gat_deg","gat_core"]:
         l = x["diff_r"]+x["diff_e"]        
         perc[mod+"_"+ds] = np.argmax(l.values)
 
+
     
 for mod in ["gcn","gat","sage"]:#,"gat_deg","gat_core"]:
     for ds in  ['photo','computers',"Cora","CiteSeer","PubMed"]:
@@ -31,6 +35,6 @@ for mod in ["gcn","gat","sage"]:#,"gat_deg","gat_core"]:
         print(mod+"_"+ds)
         print(x["diff_r"])
         print(x["diff_e"])
-
+        print(x[np.argmax(l.values)])
 
 
