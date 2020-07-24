@@ -38,39 +38,6 @@ import operator
 
 
 
-
-George = True #if True, George is running the code, otherwise, Hamid is working on the code
-
-def order(X):
-    """Return the order statistic of each sample in X, features by features
-    """
-    n, d = np.shape(X)
-    R = np.sort(X, axis=0)
-    return R
-
-def transform_(deg_val):
-    # take as input the list of degrees of the graph
-    uni = np.unique(deg_val)
-    table = np.zeros([len(uni),2])
-    counter = 0
-    for i in uni:
-        table[counter] = [i,deg_val.count(i)]
-        counter+=1
-
-    #the original transform function
-    R = order(table[:,1].reshape(-1,1))
-    x = table[:,1].reshape(-1,1)
-
-    n, d = np.shape(x)
-    n_R = np.shape(R)[0]
-    a = np.zeros((n, d))
-    for i in range(d):
-        a[:, i] = np.searchsorted(R[:, i], x[:, i]) / float(n_R + 1)
-    return 1. / (1-a)
-
-#from collections import Counter
-#Counter(deg_val)
-
 def find_thres_naive(deg_val,percentile):
     uni = np.unique(deg_val)
     perc = 0
@@ -84,10 +51,10 @@ def find_thres_naive(deg_val,percentile):
 class Net(torch.nn.Module):
     def __init__(self,num_features,num_classes,hidden_size):
         super(Net, self).__init__()
-        self.conv1 = GATConv(num_features, 8, heads=8, dropout=0.6)
+        self.conv1 = GATConv(num_features, hidden_size, heads=8, dropout=0.6)
         # On the Pubmed dataset, use heads=8 in conv2.
         self.conv2 = GATConv(
-            8 * 8, num_classes, heads=1, concat=True, dropout=0.6)
+            hidden_size * 8, num_classes, heads=1, concat=True, dropout=0.6)
 
     def forward(self,dat):
         x = F.dropout(dat.x, p=0.6, training=self.training)
@@ -124,9 +91,10 @@ def get_label(train_extremes,y):
 
 
 
+
 def separate_indices(samples,dic,thres):
     # Separate the indices of the data that are extreme and regular
-    
+
     idx_e = [name  for name in samples  if dic[name]>=thres ]
     extremes  = np.repeat(False,len(names))
     extremes[idx_e] = True
@@ -146,219 +114,204 @@ def separate_indices(samples,dic,thres):
 
 
 
-if George:
-    #os.chdir("/home/george/Desktop/extreme-gnns/data") 
-    #os.chdir("/home/dascim/panago/data")
-    os.chdir("/data/home/gpanagopoulos/egnn/code")
-else:
-    os.chdir("/home/h/Documents/Japet/Extreme-GNNs/data")
-
-
 
 if __name__ == '__main__':
+    
+    os.chdir("/data") 
     #------- Dataset & Parameters
     hidden_size = 32
     hidden_base = 64
     lr = 0.01
     n_epochs = 500
-    experiments = 5
-    step_perc = 4
+    experiments = 10
+    step_perc = 2
     repetitions = 10
     class_sample = 20
 
-    for degree_based in [True]: #False
-        for ri in range(repetitions):
-            #https://pytorch-geometric.readthedocs.io/en/latest/modules/datasets.html
-            np.random.seed(42+ri)
-            for ds in  ['computers','photo']: # Amazon, Coauthor
-                if George:
-                    path = osp.join(osp.dirname( osp.realpath("/data/home/gpanagopoulos/egnn/")), 'data', ds) #
-                else:
-                    path = osp.join(osp.dirname(osp.realpath("/home/h/Documents/Japet/Extreme-GNNs/")), '..', 'data', ds)
-    
-                dataset = Amazon(path,ds,T.NormalizeFeatures())
-                #dataset2 = Coauthor(path,"cs")
-                data = dataset[0]
-                edgelist = data.edge_index.numpy()
-    
-                g = nx.DiGraph()
-                # because some nodes are not in the edgelists
-                g.add_nodes_from(range(max(max(edgelist[0]),max(edgelist[1]))))
-    
-                for i in range(len(edgelist[0])):
-                    g.add_edge(edgelist[0][i],edgelist[1][i])
-    
-                # degreee based
-                if(degree_based):
-                    degs = dict(g.degree())
-                    logw = open("../results_new/logw_gat_deg_"+str(ri)+"_"+ds+".csv","w")
-                else:
-                    degs = nx.core_number(g)
-                    logw = open("../results_new/logw_gat_core_"+str(ri)+"_"+ds+".csv","w")
-                names = list(g.nodes())
-    
-                labs =  data.y.numpy()
-                num_classes = len(np.unique(labs))
-    
-                #-----------------------------------------------
+    for ri in range(repetitions):
+        #https://pytorch-geometric.readthedocs.io/en/latest/modules/datasets.html
+        np.random.seed(42+ri)
+        for ds in  ['photo']:
+            path = osp.join('data', ds)
+          
+            dataset = Amazon(path,ds,T.NormalizeFeatures())
+            data = dataset[0]
+            edgelist = data.edge_index.numpy()
+
+            g = nx.DiGraph()
+            # because some nodes are not in the edgelists
+            g.add_nodes_from(range(max(max(edgelist[0]),max(edgelist[1]))))
+
+            for i in range(len(edgelist[0])):
+                g.add_edge(edgelist[0][i],edgelist[1][i])
+
+            
+            # degreee based
+            degs = dict(g.degree())
+            logw = open("../results/logw_test_gat_"+str(ri)+"_"+ds+".csv","w")
+            logw_val = open("../results/logw_val_gat_"+str(ri)+"_"+ds+".csv","w")
+            logw.write("perc,test_r,test_br,test_e,test_be\n")
+            logw_val.write("perc,val_r,val_br,val_e,val_be\n")
+
+            names = list(g.nodes())
+
+            labs =  data.y.numpy()
+            num_classes = len(np.unique(labs))
+            
+            percentile = 90
+            deg_val = list(degs.values())
+
+            test_set_size = len(names)/2
+            test_samples = np.random.choice([i for i in range(len(names))],  round(test_set_size),replace=False)
+            
+            y = data.y.numpy()
+            y = y[~test_samples]
+            
+            #---- 20 samples per class
+            train_samples = []
+            for cl in np.unique(y):
+                train_samples.extend(np.random.choice(np.where(y==cl)[0],class_sample,replace =False))
+             
+            val_samples =[idx for idx in range(len(y)) if idx not in train_samples ]
+            
+            train_all = np.repeat(False,len(data.y.numpy()))
+            train_all[train_samples] = True
+
+            for exp in range(experiments):
+                thres = find_thres_naive(deg_val,percentile)
+                #print(thres)
                 
-                logw.write("perc,test_r,test_br,test_e,test_be\n")
-    
-                percentile = 90
-                deg_val = list(degs.values())
-    
-                test_set_size = len(names)/2
-                test_samples = np.random.choice([i for i in range(len(names))],  round(test_set_size),replace=False)
-                
+                percentile = percentile - step_perc
+                    
+                print("train")
+                train_extremes, train_regulars =  separate_indices(train_samples,degs,thres)
+                print("val")
+                val_extremes, val_regulars =  separate_indices(val_samples,degs,thres)
+                print("test")
+                test_extremes, test_regulars =  separate_indices(test_samples,degs,thres)
+                            
+                #----- to binary
                 y = data.y.numpy()
-                y = y[~test_samples]
+                extreme_train_label = get_label(train_extremes,y)
+                data.y = torch.tensor(np.array([i==extreme_train_label for i in list(y)]).astype(int))
+
+                #------- Input to the extreme head
+                train_mask_e = torch.tensor(train_extremes)
+                val_mask_e = torch.tensor(val_extremes)
+                test_mask_e =  torch.tensor(test_extremes)
+
+
+                #--- Input to the regular head 
+                train_mask_r = torch.tensor(train_regulars)
+                val_mask_r = torch.tensor(val_regulars)
+                test_mask_r =  torch.tensor(test_regulars)#[not i for i in test_extremes])
+
+
+                train_all = torch.tensor(train_all) 
                 
-                #---- 20 samples per class
-                train_samples = []
-                for cl in np.unique(y):
-                    train_samples.extend(np.random.choice(np.where(y==cl)[0],class_sample,replace =False))
-                 
-                val_samples =[idx for idx in range(len(y)) if idx not in train_samples ]
+                #------- Define the input variables 
+                num_features = data.x.shape[1]
+                device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+
+                #------------------------------ Regular
+                dat_regular = Data(edge_index = data.edge_index,
+                                   test_mask = test_mask_r, train_mask = train_mask_r,
+                                   x = data.x , y = data.y, val_mask = val_mask_r).to(device)
+
+                model = Net(num_features,num_classes,hidden_size).to(device)
+                optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=5e-4)
+
+                print("regular")
+                best_test_r = 0
+                best_val_acc_r = test_acc = 0
+                for epoch in range(1, n_epochs+1):
+                    train(dat_regular)
+                    train_acc, val_acc, tmp_test_acc = test(dat_regular)
+                    if val_acc > best_val_acc_r:
+                        best_val_acc_r = val_acc
+                        test_acc = tmp_test_acc
+
+                    if(test_acc>best_test_r):
+                        best_test_r = test_acc
+                    if epoch%50==0:
+                        log = 'Epoch: {:03d}, Train: {:.4f}, Val: {:.4f}, Test: {:.4f}'
+                        print(log.format(epoch, train_acc, best_val_acc_r, test_acc))
+
+
+                #------------------------------ Extreme
+                dat_extreme = Data(edge_index = data.edge_index, test_mask = test_mask_e,
+                            train_mask = train_mask_e, x = data.x , y = data.y, val_mask = val_mask_e).to(device)
+
+                model = Net(num_features,num_classes,hidden_size).to(device)
+                optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=5e-4)
                 
-                train_all = np.repeat(False,len(data.y.numpy()))
-                train_all[train_samples] = True
-    
-                for exp in range(experiments):
-                    # find the threshold
-                    #V = transform_(deg_val)
-                    #thres = np.percentile(V, q=percentile)
-                    thres = find_thres_naive(deg_val,percentile)
-                    #print(thres)
-                    
-                    percentile = percentile - step_perc
-                        
-                    print("train")
-                    train_extremes, train_regulars =  separate_indices(train_samples,degs,thres)
-                    print("val")
-                    val_extremes, val_regulars =  separate_indices(val_samples,degs,thres)
-                    print("test")
-                    test_extremes, test_regulars =  separate_indices(test_samples,degs,thres)
-                                
-                    #----- to binary
-                    y = data.y.numpy()
-                    extreme_train_label = get_label(train_extremes,y)
-                    data.y = torch.tensor(np.array([i==extreme_train_label for i in list(y)]).astype(int))
-    
-                    #------- Input to the extreme head
-                    train_mask_e = torch.tensor(train_extremes)
-                    val_mask_e = torch.tensor(val_extremes)
-                    test_mask_e =  torch.tensor(test_extremes)
-    
-    
-                    #--- Input to the regular head 
-                    train_mask_r = torch.tensor(train_regulars)
-                    val_mask_r = torch.tensor(val_regulars)
-                    test_mask_r =  torch.tensor(test_regulars)#[not i for i in test_extremes])
-    
-    
-                    train_all = torch.tensor(train_all) 
-                    
-                    #------- Define the input variables 
-                    num_features = data.x.shape[1]
-                    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    
-    
-                    #------------------------------ Regular
-                    dat_regular = Data(edge_index = data.edge_index,
-                                       test_mask = test_mask_r, train_mask = train_mask_r,
-                                       x = data.x , y = data.y, val_mask = val_mask_r).to(device)
-    
-                    model = Net(num_features,num_classes,hidden_size).to(device)
-                    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=5e-4)
-    
-                    print("regular")
-                    best_test_r = 0
-                    best_val_acc = test_acc = 0
-                    for epoch in range(1, n_epochs+1):
-                        train(dat_regular)
-                        train_acc, val_acc, tmp_test_acc = test(dat_regular)
-                        if val_acc > best_val_acc:
-                            best_val_acc = val_acc
-                            test_acc = tmp_test_acc
-    
-                        if(test_acc>best_test_r):
-                            best_test_r = test_acc
-                        if epoch%50==0:
-                            log = 'Epoch: {:03d}, Train: {:.4f}, Val: {:.4f}, Test: {:.4f}'
-                            print(log.format(epoch, train_acc, best_val_acc, test_acc))
-    
-    
-                    #------------------------------ Extreme
-                    dat_extreme = Data(edge_index = data.edge_index, test_mask = test_mask_e,
-                                train_mask = train_mask_e, x = data.x , y = data.y, val_mask = val_mask_e).to(device)
-    
-                    model = Net(num_features,num_classes,hidden_size).to(device)
-                    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=5e-4)
-                    
-                    print("extreme")
-                    best_test_e = 0
-                    best_val_acc = test_acc = 0
-                    for epoch in range(1, n_epochs+1):
-                        train(dat_extreme)
-                        train_acc, val_acc, tmp_test_acc = test(dat_extreme)
-                        if val_acc > best_val_acc:
-                            best_val_acc = val_acc
-                            test_acc = tmp_test_acc
-    
-                        if(test_acc>best_test_e):
-                            best_test_e = test_acc
-                        if epoch%50==0:
-                            log = 'Epoch: {:03d}, Train: {:.4f}, Val: {:.4f}, Test: {:.4f}'
-                            print(log.format(epoch, train_acc, best_val_acc, test_acc))
-    
-    
-                    #---------------------- Base Regular
-                    dat_baseline_reg = Data(edge_index = data.edge_index, test_mask = test_mask_r,
-                                train_mask = train_all, x = data.x , y = data.y, val_mask = val_mask_r).to(device)
-    
-                    model = Net(num_features,num_classes,hidden_base).to(device)
-                    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=5e-4)
-    
-    
-                    print("baseline regular")
-                    best_test_br = 0
-                    best_val_acc = test_acc = 0
-                    for epoch in range(1, n_epochs+1):
-                        train(dat_baseline_reg)
-                        train_acc, val_acc, tmp_test_acc = test(dat_baseline_reg)
-                        if val_acc > best_val_acc:
-                            best_val_acc = val_acc
-                            test_acc = tmp_test_acc
-                        if(test_acc>best_test_br):
-                            best_test_br = test_acc
-                        if epoch%50==0:
-                            log = 'Epoch: {:03d}, Train: {:.4f}, Val: {:.4f}, Test: {:.4f}'
-                            print(log.format(epoch, train_acc, best_val_acc, test_acc))
-    
-                    #---------------------- Base Extreme
-                    dat_baseline_ex = Data(edge_index = data.edge_index, test_mask = test_mask_e,
-                                train_mask = train_all, x = data.x , y = data.y, val_mask = val_mask_e).to(device)
-    
-                    model = Net(num_features,num_classes,hidden_base).to(device)
-                    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=5e-4)
-    
-                    print("baseline extreme")
-                    best_test_be = 0
-                    best_val_acc = test_acc = 0
-                    for epoch in range(1, n_epochs+1):
-                        train(dat_baseline_ex)
-                        train_acc, val_acc, tmp_test_acc = test(dat_baseline_ex)
-                        if val_acc > best_val_acc:
-                            best_val_acc = val_acc
-                            test_acc = tmp_test_acc
-                        if(test_acc>best_test_be):
-                            best_test_be = test_acc
-                        if epoch%50==0:
-                            log = 'Epoch: {:03d}, Train: {:.4f}, Val: {:.4f}, Test: {:.4f}'
-                            print(log.format(epoch, train_acc, best_val_acc, test_acc))
-    
-                    logw.write(str(percentile)+","+str(best_test_r)+"," +str(best_test_br)+","+str(best_test_e)+","+str(best_test_be)+"\n")
-    
-                logw.close()
+                print("extreme")
+                best_test_e = 0
+                best_val_acc_e = test_acc = 0
+                for epoch in range(1, n_epochs+1):
+                    train(dat_extreme)
+                    train_acc, val_acc, tmp_test_acc = test(dat_extreme)
+                    if val_acc > best_val_acc_e:
+                        best_val_acc_e = val_acc
+                        test_acc = tmp_test_acc
+
+                    if(test_acc>best_test_e):
+                        best_test_e = test_acc
+                    if epoch%50==0:
+                        log = 'Epoch: {:03d}, Train: {:.4f}, Val: {:.4f}, Test: {:.4f}'
+                        print(log.format(epoch, train_acc, best_val_acc_e, test_acc))
+
+
+                #---------------------- Base Regular
+                dat_baseline_reg = Data(edge_index = data.edge_index, test_mask = test_mask_r,
+                            train_mask = train_all, x = data.x , y = data.y, val_mask = val_mask_r).to(device)
+
+                model = Net(num_features,num_classes,hidden_base).to(device)
+                optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=5e-4)
+
+
+                print("baseline regular")
+                best_test_br = 0
+                best_val_acc_br = test_acc = 0
+                for epoch in range(1, n_epochs+1):
+                    train(dat_baseline_reg)
+                    train_acc, val_acc, tmp_test_acc = test(dat_baseline_reg)
+                    if val_acc > best_val_acc_br:
+                        best_val_acc_br = val_acc
+                        test_acc = tmp_test_acc
+                    if(test_acc>best_test_br):
+                        best_test_br = test_acc
+                    if epoch%50==0:
+                        log = 'Epoch: {:03d}, Train: {:.4f}, Val: {:.4f}, Test: {:.4f}'
+                        print(log.format(epoch, train_acc, best_val_acc_br, test_acc))
+
+                #---------------------- Base Extreme
+                dat_baseline_ex = Data(edge_index = data.edge_index, test_mask = test_mask_e,
+                            train_mask = train_all, x = data.x , y = data.y, val_mask = val_mask_e).to(device)
+
+                model = Net(num_features,num_classes,hidden_base).to(device)
+                optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=5e-4)
+
+                print("baseline extreme")
+                best_test_be = 0
+                best_val_acc_be = test_acc = 0
+                for epoch in range(1, n_epochs+1):
+                    train(dat_baseline_ex)
+                    train_acc, val_acc, tmp_test_acc = test(dat_baseline_ex)
+                    if val_acc > best_val_acc_be:
+                        best_val_acc_be = val_acc
+                        test_acc = tmp_test_acc
+                    if(test_acc>best_test_be):
+                        best_test_be = test_acc
+                    if epoch%50==0:
+                        log = 'Epoch: {:03d}, Train: {:.4f}, Val: {:.4f}, Test: {:.4f}'
+                        print(log.format(epoch, train_acc, best_val_acc_be, test_acc))
+
+                logw_val.write(str(percentile)+","+str(best_val_acc_r)+"," +str(best_val_acc_br)+","+str(best_val_acc_e)+","+str(best_val_acc_be)+"\n")
+                logw.write(str(percentile)+","+str(best_test_r)+"," +str(best_test_br)+","+str(best_test_e)+","+str(best_test_be)+"\n")
+            
+            logw_val.close()    
+            logw.close()
 
 

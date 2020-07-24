@@ -9,7 +9,6 @@ reated on Tue Nov  5 18:56:35 2019
 import os
 import pandas as pd
 import os.path as osp
-import argparse
 
 import torch.nn.functional as F
 from torch_geometric.datasets import Planetoid
@@ -22,7 +21,7 @@ from torch_geometric.nn import MessagePassing
 from torch_geometric.utils import remove_self_loops, add_self_loops
 import matplotlib.pyplot as plt   
 
-
+from sklearn.metrics import roc_auc_score
 import igraph as ig
 import scipy.io
 import networkx as nx
@@ -33,38 +32,6 @@ import torch_geometric.transforms as T
 from collections import Counter
 import operator
 
-
-
-
-George = True #if True, George is running the code, otherwise, Hamid is working on the code
-
-def order(X):
-    """Return the order statistic of each sample in X, features by features
-    """
-    n, d = np.shape(X)
-    R = np.sort(X, axis=0)
-    return R
-
-
-def transform_(deg_val):
-    # take as input the list of degrees of the graph
-    uni = np.unique(deg_val)
-    table = np.zeros([len(uni),2])
-    counter = 0
-    for i in uni:
-        table[counter] = [i,deg_val.count(i)]
-        counter+=1
-    
-    #the original transform function
-    R = order(table[:,1].reshape(-1,1)) 
-    x = table[:,1].reshape(-1,1)
-    
-    n, d = np.shape(x)
-    n_R = np.shape(R)[0]
-    a = np.zeros((n, d))
-    for i in range(d):
-        a[:, i] = np.searchsorted(R[:, i], x[:, i]) / float(n_R + 1)
-    return 1. / (1-a)
 
 
 
@@ -82,10 +49,10 @@ def find_thres_naive(deg_val,percentile):
 class Net(torch.nn.Module):
     def __init__(self,num_features,num_classes,hidden_size):
         super(Net, self).__init__()
-        self.conv1 = GATConv(num_features, 8, heads=8, dropout=0.6)
+        self.conv1 = GATConv(num_features, hidden_size, heads=8, dropout=0.6)
         # On the Pubmed dataset, use heads=8 in conv2.
         self.conv2 = GATConv(
-            8 * 8, num_classes, heads=1, concat=True, dropout=0.6)
+            hidden_size * 8, num_classes, heads=1, concat=True, dropout=0.6)
 
     def forward(self,dat):
         x = F.dropout(dat.x, p=0.6, training=self.training)
@@ -108,8 +75,9 @@ def test(dat):
     logits, accs = model(dat), []
     for _, mask in dat('train_mask', 'val_mask', 'test_mask'):
         pred = logits[mask].max(1)[1]
-        acc = pred.eq(dat.y[mask]).sum().item() / mask.sum().item()
-        accs.append(acc)
+        pred = pred.detach().cpu().numpy()
+        labels = dat.y[mask].detach().cpu().numpy()
+        accs.append(roc_auc_score(labels,pred))
     return accs  
 
 
@@ -121,7 +89,6 @@ def get_label(train_extremes,y):
 def separate_indices(samples,dic,thres):    
     # Separate the indices of the data that are extreme and regular
     idx_e = [name  for name in samples  if dic[name]>=thres ] 
-    #idx = [names.index(i) for i in extreme_names]
     extremes  = np.repeat(False,len(names)) 
     extremes[idx_e] = True 
     
@@ -139,30 +106,20 @@ def separate_indices(samples,dic,thres):
     return extremes, regulars
  
     
-
-
-if George:
-    os.chdir("/home/george/Desktop/extreme-gnns/data") 
-   # os.chdir("/home/dascim/panago/data")
-else:
-    os.chdir("/home/h/Documents/Japet/Extreme-GNNs/data")
-           
+ 
 if __name__ == '__main__': 
+    os.chdir("/data") 
     #------- Dataset & Parameters
     hidden_size = 32
     hidden_base = 64
     lr = 0.01
-    n_epochs = 500
-    experiments = 5
-    step_perc = 4
+    n_epochs = 300
+    experiments = 10
+    step_perc = 2
         
-    for ds in  ['CiteSeer','Cora','PubMed']:
-        if George:
-            path = osp.join(osp.dirname(
-                    osp.realpath("/home/george/Desktop/extreme-gnns/data")), 'data', ds)
-        else:
-            path = osp.join(osp.dirname(osp.realpath("/home/h/Documents/Japet/Extreme-GNNs/")), '..', 'data', ds)
-            
+    for ds in  ['Cora','PubMed']:
+        path = osp.join('data', ds)
+          
         dataset = Planetoid(path, ds, T.NormalizeFeatures())
         data = dataset[0]
         edgelist = data.edge_index.numpy()
@@ -184,8 +141,10 @@ if __name__ == '__main__':
         
         
         #-----------------------------------------------
-        logw = open("../results_new/logw_egat_"+ds+".csv","w")
+        logw = open("../results/logw_test_gat_"+ds+".csv","w")
         logw.write("perc,test_r,test_br,test_e,test_be\n")
+        logw_val = open("../results/logw_val_gat_"+ds+".csv","w")
+        logw_val.write("perc,val_r,val_br,val_e,val_be\n")
         # change the percentile of threshold for 5%
         
         percentile = 90
@@ -194,17 +153,14 @@ if __name__ == '__main__':
         for i in range(experiments):
             
             # find the threshold
-            #V = transform_(deg_val)
-            #thres = np.percentile(V, q=percentile)
-            #print(thres)
             thres = find_thres_naive(deg_val,percentile)
             
             percentile = percentile-step_perc
             
-            train_samples = [i for i in np.where(data.train_mask.numpy())[0] ] #np.random.choice( [i for i in range(len(names))] ,  round(20*len(names)/100),replace=False) 
-            val_samples = [names[i] for i in np.where(data.val_mask.numpy())[0] ]     #np.random.choice( [i for i in range(len(names))] ,  round(20*len(names)/100),replace=False) 
+            train_samples = [i for i in np.where(data.train_mask.numpy())[0] ] 
+            val_samples = [names[i] for i in np.where(data.val_mask.numpy())[0] ]    
             test_samples = [names[i] for i in np.where(data.test_mask.numpy())[0] ]
-            #idx = [names.index(i) for i in extreme_names]
+            
     
             print("train")    
             train_extremes, train_regulars =  separate_indices(train_samples,degs,thres)
@@ -244,19 +200,19 @@ if __name__ == '__main__':
             
             print("regular")    
             best_test_r = 0
-            best_val_acc = test_acc = 0
+            best_val_acc_r= test_acc = 0
             for epoch in range(1, n_epochs+1):
                 train(dat_regular)
                 train_acc, val_acc, tmp_test_acc = test(dat_regular)
-                if val_acc > best_val_acc:
-                    best_val_acc = val_acc
+                if val_acc > best_val_acc_r:
+                    best_val_acc_r= val_acc
                     test_acc = tmp_test_acc
                     
                 if(test_acc>best_test_r):
                     best_test_r = test_acc   
                 if epoch%50==0:
                     log = 'Epoch: {:03d}, Train: {:.4f}, Val: {:.4f}, Test: {:.4f}'
-                    print(log.format(epoch, train_acc, best_val_acc, test_acc))
+                    print(log.format(epoch, train_acc, best_val_acc_r, test_acc))
                 
                 
             #------------------------------ Extreme
@@ -269,19 +225,19 @@ if __name__ == '__main__':
             
             print("extreme")    
             best_test_e = 0
-            best_val_acc = test_acc = 0
+            best_val_acc_e = test_acc = 0
             for epoch in range(1, n_epochs+1):
                 train(dat_extreme)
                 train_acc, val_acc, tmp_test_acc = test(dat_extreme)
-                if val_acc > best_val_acc:
-                    best_val_acc = val_acc
+                if val_acc > best_val_acc_e:
+                    best_val_acc_e = val_acc
                     test_acc = tmp_test_acc
                     
                 if(test_acc>best_test_e):
                     best_test_e = test_acc   
                 if epoch%50==0:
                     log = 'Epoch: {:03d}, Train: {:.4f}, Val: {:.4f}, Test: {:.4f}'
-                    print(log.format(epoch, train_acc, best_val_acc, test_acc))   
+                    print(log.format(epoch, train_acc, best_val_acc_e, test_acc))   
                 
             
             #---------------------- Base Regular
@@ -294,18 +250,18 @@ if __name__ == '__main__':
             
             print("baseline regular")
             best_test_br = 0
-            best_val_acc = test_acc = 0
+            best_val_acc_br = test_acc = 0
             for epoch in range(1, n_epochs+1):
                 train(dat_baseline_reg)
                 train_acc, val_acc, tmp_test_acc = test(dat_baseline_reg)
-                if val_acc > best_val_acc:
-                    best_val_acc = val_acc
+                if val_acc > best_val_acc_br:
+                    best_val_acc_br = val_acc
                     test_acc = tmp_test_acc
                 if(test_acc>best_test_br):
                     best_test_br = test_acc   
                 if epoch%50==0:
                     log = 'Epoch: {:03d}, Train: {:.4f}, Val: {:.4f}, Test: {:.4f}'
-                    print(log.format(epoch, train_acc, best_val_acc, test_acc))  
+                    print(log.format(epoch, train_acc, best_val_acc_br, test_acc))  
         
             #---------------------- Base Extreme
             dat_baseline_ex = Data(edge_index = data.edge_index, test_mask = test_mask_e, 
@@ -316,20 +272,24 @@ if __name__ == '__main__':
            
             print("baseline extreme")
             best_test_be = 0
-            best_val_acc = test_acc = 0
+            best_val_acc_be = test_acc = 0
             for epoch in range(1, n_epochs+1):
                 train(dat_baseline_ex)
                 train_acc, val_acc, tmp_test_acc = test(dat_baseline_ex)
-                if val_acc > best_val_acc:
-                    best_val_acc = val_acc
+                if val_acc > best_val_acc_be:
+                    best_val_acc_be = val_acc
                     test_acc = tmp_test_acc
                 if(test_acc>best_test_be):
                     best_test_be = test_acc                
                 if epoch%50==0:
                     log = 'Epoch: {:03d}, Train: {:.4f}, Val: {:.4f}, Test: {:.4f}'
-                    print(log.format(epoch, train_acc, best_val_acc, test_acc))  
+                    print(log.format(epoch, train_acc, best_val_acc_be, test_acc))  
+            
+            logw_val.write(str(percentile)+","+str(best_val_acc_r)+"," +str(best_val_acc_br)+","+str(best_val_acc_e)+","+str(best_val_acc_be)+"\n")
             
             logw.write(str(percentile)+","+str(best_test_r)+"," +str(best_test_br)+","+str(best_test_e)+","+str(best_test_be)+"\n")
-            
+     
+    logw_val.close()
     logw.close()
+
 
